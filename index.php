@@ -1,70 +1,57 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitrix24 Webhook</title>
-</head>
-<body>
-    <script>
-        // Получаем ID сделки из URL параметра
-        const urlParams = new URLSearchParams(window.location.search);
-        const dealId = urlParams.get('deal_id');
+<?php
+// URL API для поиска пациента
+$apiUrl = 'https://api-developer.macdent.kz/patient/find/';
 
-        if (dealId) {
-            // URL вебхука для получения данных сделки
-            const dealUrl = `https://dentapro.bitrix24.kz/rest/15/y4pt5in154pwzctu/crm.deal.get.json?id=${dealId}`;
+// Access token для аутентификации
+$accessToken = '488:huOTWx5yovGFxDE50kmeLZiiLpU2G2Q6wJxo7b1DYIPB0nYzRXyByMdDGwTzWwdwW7XOYi33HYl7wBcg58UwdciFfVtjjM8ue8swyZKbrkeSdOxtkEyuR6g5';
 
-            fetch(dealUrl, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(dealData => {
-                if (dealData.result && dealData.result.CONTACT_ID) {
-                    const contactId = dealData.result.CONTACT_ID;
+// Получение данных из запроса Bitrix24
+$request = file_get_contents('php://input');
+$data = json_decode($request, true);
 
-                    // URL вебхука для получения данных контакта
-                    const contactUrl = `https://dentapro.bitrix24.kz/rest/15/y4pt5in154pwzctu/crm.contact.get.json?id=${contactId}`;
+// Проверка наличия данных сделки
+if (isset($data['data']['FIELDS']['CONTACT_ID'])) {
+    $contactId = $data['data']['FIELDS']['CONTACT_ID'];
 
-                    return fetch(contactUrl, {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-                } else {
-                    throw new Error('Контакт не найден.');
-                }
-            })
-            .then(response => response.json())
-            .then(contactData => {
-                if (contactData.result && contactData.result.PHONE && contactData.result.PHONE[0] && contactData.result.PHONE[0].VALUE) {
-                    const phoneNumber = contactData.result.PHONE[0].VALUE;
+    // Получение данных контакта из Bitrix24
+    $contactData = getContactData($contactId);
 
-                    // URL для поиска в базе macdent
-                    const macdentUrl = `https://api-developer.macdent.kz/patient/find/?phone=${encodeURIComponent(phoneNumber)}&access_token=488:huOTWx5yovGFxDE50kmeLZiiLpU2G2Q6wJxo7b1DYIPB0nYzRXyByMdDGwTzWwdwW7XOYi33HYl7wBcg58UwdciFfVtjjM8ue8swyZKbrkeSdOxtkEyuR6g5`;
+    if ($contactData && isset($contactData['PHONE'][0]['VALUE'])) {
+        $phone = $contactData['PHONE'][0]['VALUE'];
 
-                    return fetch(macdentUrl, {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-                } else {
-                    throw new Error('Номер телефона не найден.');
-                }
-            })
-            .then(response => response.json())
-            .then(macdentData => {
-                // Ваши дальнейшие действия с данными из macdent
-                console.log('Данные из macdent:', macdentData);
-            })
-            .catch(error => {
-                console.error('Ошибка:', error.message);
-            });
+        // Формирование URL для запроса
+        $url = $apiUrl . '?phone=' . urlencode($phone) . '&access_token=' . urlencode($accessToken);
+
+        // Отправка HTTP-запроса
+        $response = file_get_contents($url);
+
+        // Обработка ответа
+        if ($response === FALSE) {
+            // Обработка ошибки
+            error_log("Ошибка при отправке данных контакта: " . print_r($contactData, true));
         } else {
-            console.error('Некорректный ID сделки.');
+            // Вывод ответа
+            echo $response;
         }
-    </script>
-</body>
-</html>
+    } else {
+        // Обработка ошибки отсутствия телефона
+        error_log("Телефон контакта не найден: " . print_r($contactData, true));
+    }
+} else {
+    // Обработка ошибки отсутствия CONTACT_ID
+    error_log("CONTACT_ID не найден в запросе: " . print_r($data, true));
+}
+
+// Функция для получения данных контакта из Bitrix24
+function getContactData($contactId) {
+    $webhookUrl = 'https://dentapro.bitrix24.kzrest/15/uwz0c10ml2e632f8/crm.contact.update.json?ID=' . $contactId;
+    $response = file_get_contents($webhookUrl);
+    $contactData = json_decode($response, true);
+
+    if (isset($contactData['result'])) {
+        return $contactData['result'];
+    }
+
+    return null;
+}
+?>
