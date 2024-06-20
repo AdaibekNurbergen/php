@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Contact Widget</title>
+    <script src="https://api.bitrix24.com/api/v1/"></script>
+</head>
+<body>
+    <div id="widget">
+        <h1>Contact Information</h1>
+        <p id="contact-info"></p>
+    </div>
+
+    <script>
+        BX24.init(function(){
+            // Получение данных контакта из сделки
+            BX24.callMethod(
+                'crm.deal.get',
+                { id: BX24.placement.info().options.ID },
+                function(result) {
+                    if(result.error()) {
+                        console.error(result.error());
+                    } else {
+                        var contactId = result.data().CONTACT_ID;
+                        getContactData(contactId);
+                    }
+                }
+            );
+        });
+
+        function getContactData(contactId) {
+            BX24.callMethod(
+                'crm.contact.get',
+                { id: contactId },
+                function(result) {
+                    if(result.error()) {
+                        console.error(result.error());
+                    } else {
+                        var contact = result.data();
+                        var phone = contact.PHONE[0].VALUE;
+                        document.getElementById('contact-info').innerText = 'Phone: ' + phone;
+
+                        // Отправка HTTP-запроса
+                        var xhr = new XMLHttpRequest();
+                        var url = 'https://api-developer.macdent.kz/patient/find/?phone=' + encodeURIComponent(phone) + '&access_token=488:huOTWx5yovGFxDE50kmeLZiiLpU2G2Q6wJxo7b1DYIPB0nYzRXyByMdDGwTzWwdwW7XOYi33HYl7wBcg58UwdciFfVtjjM8ue8swyZKbrkeSdOxtkEyuR6g5';
+                        xhr.open('GET', url, true);
+                        xhr.onreadystatechange = function () {
+                            if (xhr.readyState == 4 && xhr.status == 200) {
+                                console.log(xhr.responseText);
+                            }
+                        };
+                        xhr.send();
+                    }
+                }
+            );
+        }
+    </script>
+</body>
+</html>
