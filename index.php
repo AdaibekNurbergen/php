@@ -44,7 +44,7 @@ if (isset($data['data']['FIELDS']['CONTACT_ID'])) {
 
 // Функция для получения данных контакта из Bitrix24
 function getContactData($contactId) {
-    $webhookUrl = 'https://dentapro.bitrix24.kzrest/15/uwz0c10ml2e632f8/crm.contact.update.json?ID=' . $contactId;
+    $webhookUrl = 'https://dentapro.bitrix24.kz/rest/15/uwz0c10ml2e632f8/crm.contact.get.json?ID=' . $contactId;
     $response = file_get_contents($webhookUrl);
     $contactData = json_decode($response, true);
 
